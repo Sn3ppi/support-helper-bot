@@ -1,0 +1,4 @@
+.env
+doc/task.txt
+node_modules
+install.sh
