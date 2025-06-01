@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     try {
       await bot.telegram.deleteWebhook({drop_pending_updates: true});
-      await bot.telegram.setWebhook(`${config.HOOK_URL}/api/webhook`);
+      await bot.telegram.setWebhook(`https://${req.headers.host}/api/webhook`);
       res.status(200).send(`Webhook set successfully: ${req.headers.host}`);
     } catch (err) {
       res.status(500).send("Error setting webhook");
