@@ -6,7 +6,7 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "build": "npx babel ./src --config-file ./.babelrc --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./public/src --verbose && npx babel ./api --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./public/api --verbose",
+    "build": "npx babel ./src --config-file ./.babelrc --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./src --verbose && npx babel ./api --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./api --verbose",
     "serve": "vercel dev",
     "start": "npm run build && vercel dev"
   },

@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { bot } from '@/main.mts';
 import config from '@/config.mts';
-import { createMsgTable } from "@/db_client.mjs";
+import { createMsgTable } from "@/db_client.mts";
 
 if (
   !config.BOT_TOKEN ||
