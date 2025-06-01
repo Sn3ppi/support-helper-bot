@@ -3,11 +3,5 @@
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "buildCommand": "npm run build",
     "installCommand": "npm install",
-    "outputDirectory": "public",
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "public/api/$1.js"
-        }
-    ]
+    "outputDirectory": "public"
 }
