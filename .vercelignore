@@ -4,4 +4,7 @@ node_modules
 install.sh
 .vercel
 public
+.gitignore
+.env.example
+doc
 vercel.old.json
