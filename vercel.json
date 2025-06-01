@@ -1,7 +1,21 @@
 {
     "version": 2,
+    "public": true,
     "$schema": "https://openapi.vercel.sh/vercel.json",
     "buildCommand": "npm run build",
     "installCommand": "npm install",
-    "outputDirectory": "public"
+    "outputDirectory": "public",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "api/webhook.js"
+        }
+    ],
+    "redirects": [
+        {
+            "source": "/",
+            "destination": "/api",
+            "permanent": false
+        }
+    ]
 }
