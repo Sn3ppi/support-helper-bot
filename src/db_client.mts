@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
-import config from "./config.mts";
+
+import config from "@/config.mts";
 
 const pool = new Pool({
     user: config.DB_USER,

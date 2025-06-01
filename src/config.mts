@@ -12,8 +12,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_NAME = process.env.DB_NAME;
 const DB_HOST = process.env.DB_HOST;
 const DB_PORT = Number(process.env.DB_PORT);
-/* WebHook */
-const HOOK_PORT = Number(process.env.HOOK_PORT) || 5000;
+/* Webhook */
 const HOOK_URL = process.env.HOOK_URL;
 
-export default { ADMIN_CHAT, BOT_TOKEN, DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT, HOOK_PORT, HOOK_URL };
+export default { ADMIN_CHAT, BOT_TOKEN, DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, DB_PORT, HOOK_URL };

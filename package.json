@@ -4,15 +4,11 @@
   "description": "",
   "license": "ISC",
   "author": "",
-  "type": "commonjs",
-  "main": "src/main.mts",
-  "directories": {
-    "doc": "doc"
-  },
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.mts",
-    "start": "tsx src/main.mts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx babel ./src --config-file ./.babelrc --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./public/src --verbose && npx babel ./api --extensions .ts,.tsx,.mts,.js,.jsx,.mjs -d ./public/api --verbose",
+    "serve": "vercel dev",
+    "start": "npm run build && vercel dev"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
@@ -20,6 +16,17 @@
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.2"
+    "@babel/cli": "^7.27.2",
+    "@babel/core": "^7.27.4",
+    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
+    "@babel/preset-typescript": "^7.27.1",
+    "@types/node": "^22.15.29",
+    "@types/pg": "^8.15.2",
+    "@vercel/node": "^5.2.1",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-plugin-replace-import-extension": "^1.1.5",
+    "typescript": "^5.8.3",
+    "vercel": "^42.3.0"
   }
 }

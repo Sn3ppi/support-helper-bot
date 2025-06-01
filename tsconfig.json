@@ -1,5 +1,9 @@
 {
     "compilerOptions": {
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "lib": ["esnext", "dom"],
         "target": "esnext",
         "module": "esnext",
         "moduleResolution": "node",
@@ -12,5 +16,5 @@
             "@/*": ["./src/*"]
         }
     },
-    "exclude": ["node_modules", "dist"]
+    "include": ["src/**/*", "api/**/*"]
 }
