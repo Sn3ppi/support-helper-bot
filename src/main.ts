@@ -1,12 +1,30 @@
 import { Telegraf } from 'telegraf';
 
-import config from "@/config.mts";
-import { getUserByMsg, addUserMsg } from "@/db_client.mjs";
+import config from "./config";
+import { getUserByMsg, addUserMsg } from "./db_client";
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
-bot.command('start', (ctx): void => {
+bot.command('start', async (ctx) => {
   ctx.reply("Привет! Это чат-бот технической поддержки.");
+});
+
+
+bot.command('id', async (ctx) => {
+  const chatId = ctx.chat?.id;
+  const userId = ctx.from?.id;
+  const botId = ctx.botInfo.id;
+  if (chatId && userId) {
+    await ctx.reply(
+      `ID чата: <code>${chatId}</code>\n` +
+      `ID пользователя: <code>${userId}</code>\n` +
+      `ID бота: <code>${botId}</code>`,
+      { parse_mode: "HTML" }
+    );
+  }
+  else {
+    await ctx.reply("Не удалось получить ID.")
+  }
 });
 
 bot.on('message', async (ctx) => {
@@ -40,7 +58,8 @@ bot.on('message', async (ctx) => {
         await bot.telegram.sendMessage(targetUserId, ctx.message.text);
       } else if ('photo' in ctx.message) {
         const photo = ctx.message.photo.pop();
-        await bot.telegram.sendPhoto(targetUserId, photo.file_id, { caption: ctx.message.caption || '' });
+        if (photo)
+          await bot.telegram.sendPhoto(targetUserId, photo.file_id, { caption: ctx.message.caption || '' });
       } else if ('document' in ctx.message) {
         await bot.telegram.sendDocument(targetUserId, ctx.message.document.file_id, { caption: ctx.message.caption || '' });
       } else if ('video' in ctx.message) {

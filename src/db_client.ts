@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 
-import config from "@/config.mts";
+import config from "./config";
 
 const pool = new Pool({
     user: config.DB_USER,
@@ -26,7 +26,7 @@ const createMsgTable = async () => {
     }
 };
 
-const getUserByMsg = async (messageId: number): Promise<number | null> => {
+const getUserByMsg = async (messageId: number) => {
     const query = "SELECT user_id FROM messages WHERE message_id = $1";
     try {
         const res = await pool.query(query, [messageId]);

@@ -1,19 +1,11 @@
 {
   "version": 2,
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "functions": {
-    "./api/webhook.js": {
-       "memory": 1024,
-    "maxDuration": 10,
-      "runtime": "@vercel/node@2.0.0"
-    }
-  },
-  "routes": [
+  "public": true,
+  "rewrites": [
     {
-         "src": "/api/(.*)",
-        "dest": "api/$1.js"  
+      "source": "/(.*)",
+      "destination": "api/webhook.ts"
     }
-  ]
+  ],
+  "redirects": [{ "source": "/", "destination": "/api/webhook", "permanent": false }]
 }

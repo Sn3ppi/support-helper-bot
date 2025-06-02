@@ -1,20 +1,18 @@
 {
-    "compilerOptions": {
-        "skipLibCheck": true,
-        "sourceMap": true,
-        "resolveJsonModule": true,
-        "lib": ["esnext", "dom"],
-        "target": "esnext",
-        "module": "esnext",
-        "moduleResolution": "node",
-        "importHelpers": true,
-        "isolatedModules": true,
-        "noEmit": true,
-        "allowImportingTsExtensions": true,
-        "allowSyntheticDefaultImports": true,
-        "paths": {
+  "compilerOptions": {
+    "strict": true,
+    "target": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "outDir": "public",
+    "lib": ["esnext", "dom"],
+    "resolveJsonModule": true,
+    "paths": {
             "@/*": ["./src/*"]
         }
-    },
-    "include": ["src/**/*", "api/**/*"]
+  },
+  "exclude": ["node_modules"]
 }
