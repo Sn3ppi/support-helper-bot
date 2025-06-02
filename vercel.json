@@ -6,6 +6,5 @@
       "source": "/(.*)",
       "destination": "api/webhook.ts"
     }
-  ],
-  "redirects": [{ "source": "/", "destination": "/", "permanent": false }]
+  ]
 }
