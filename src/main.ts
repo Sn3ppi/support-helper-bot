@@ -5,7 +5,7 @@ import { getUserByMsg, addUserMsg } from "./db_client";
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
-const isPrivate = (ctx) => {
+const isPrivate = (ctx: { chat: { type: string; }; }) => {
   return ctx.chat.type === 'private';
 }
 
