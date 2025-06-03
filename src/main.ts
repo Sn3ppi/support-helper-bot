@@ -21,34 +21,14 @@ bot.command('id', async (ctx) => {
   const chatId = ctx.chat?.id;
   const userId = ctx.from?.id;
   const botId = ctx.botInfo.id;
-  if (chatId && userId) {
-    if (ctx.message.reply_to_message) {
-      if (ctx.message.reply_to_message.from) {
-        const text = `ID: ${ctx.message.reply_to_message.from.id}`;
-        (ctx.chat.type === "private")
-        ? await ctx.reply(text, { parse_mode: "HTML" }) 
-        : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
-      } else {
-        const text = "Не удалось получить ID.";
-        (ctx.chat.type === "private")
-        ? await ctx.reply(text)
-        : await ctx.reply(text, { reply_parameters: { message_id: ctx.message.message_id } });
-      }
-    } else {
-      const text = `ID чата: <code>${chatId}</code>\n` +
-                   `ID пользователя: <code>${userId}</code>\n` +
-                   `ID бота: <code>${botId}</code>`;
-      (ctx.chat.type === "private")
-      ? await ctx.reply(text, { parse_mode: "HTML" }) 
-      : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
-    }
-  }
-  else {
-    const text = "Не удалось получить ID.";
-    (ctx.chat.type === "private")
-    ? await ctx.reply(text)
-    : await ctx.reply(text, { reply_parameters: { message_id: ctx.message.message_id } });
-  };
+  const text = (chatId && userId) 
+    ? `ID чата: <code>${chatId}</code>\n` +
+                  `ID пользователя: <code>${userId}</code>\n` +
+                  `ID бота: <code>${botId}</code>`
+    : "Не удалось получить ID.";
+  (ctx.chat.type === "private")
+    ? await ctx.reply(text, { parse_mode: "HTML" }) 
+    : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
 });
 
 bot.on('message', async (ctx) => {
