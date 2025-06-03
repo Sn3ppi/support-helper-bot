@@ -1,34 +1,40 @@
-import { Telegraf } from 'telegraf';
+import { Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
-const isPrivate = (ctx: { chat: { type: string; }; }) => {
-  return ctx.chat.type === 'private';
-}
-
-bot.command('start', async (ctx) => {
-  ctx.reply("Привет! Это чат-бот технической поддержки.");
+bot.command("start", async (ctx) => {
+  const text = "Привет! Это чат-бот технической поддержки.";
+  (ctx.chat.type === "private")
+    ? await ctx.reply(text)
+    : await ctx.reply(text, { 
+      reply_parameters: { message_id: ctx.message.message_id }, 
+      reply_markup: (Markup.inlineKeyboard([
+        Markup.button.url("Открыть чат", `https://t.me/${(await bot.telegram.getMe()).username}`)
+      ])).reply_markup
+    });
 });
-
 
 bot.command('id', async (ctx) => {
   const chatId = ctx.chat?.id;
   const userId = ctx.from?.id;
   const botId = ctx.botInfo.id;
   if (chatId && userId) {
-    await ctx.reply(
-      `ID чата: <code>${chatId}</code>\n` +
-      `ID пользователя: <code>${userId}</code>\n` +
-      `ID бота: <code>${botId}</code>`,
-      { parse_mode: "HTML" }
-    );
+    const text = `ID чата: <code>${chatId}</code>\n` +
+                 `ID пользователя: <code>${userId}</code>\n` +
+                 `ID бота: <code>${botId}</code>`;
+    (ctx.chat.type === "private")
+    ? await ctx.reply(text, { parse_mode: "HTML" }) 
+    : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
   }
   else {
-    await ctx.reply("Не удалось получить ID.")
-  }
+    const text = "Не удалось получить ID.";
+    (ctx.chat.type === "private")
+    ? await ctx.reply(text)
+    : await ctx.reply(text, { reply_parameters: { message_id: ctx.message.message_id } });
+  };
 });
 
 bot.on('message', async (ctx) => {
@@ -41,7 +47,7 @@ bot.on('message', async (ctx) => {
     } catch (err) {
       console.error(err);
       await ctx.reply('Не удалось отправить сообщение.');
-    }
+    };
     return;
   };
   if (
@@ -56,7 +62,6 @@ bot.on('message', async (ctx) => {
       await ctx.reply('Не удалось определить, кому отправить сообщение.');
       return;
     };
-
     try {
       if ('text' in ctx.message && ctx.message.text) {
         await bot.telegram.sendMessage(targetUserId, ctx.message.text);
@@ -75,14 +80,14 @@ bot.on('message', async (ctx) => {
       } else if ('sticker' in ctx.message) {
         await bot.telegram.sendSticker(targetUserId, ctx.message.sticker.file_id);
       } else {
-        await ctx.reply('Неизвестный тип сообщения.');
+        await ctx.reply('Неизвестный тип сообщения.', { reply_parameters: { message_id: ctx.message.message_id } });
         return;
       };
-      await ctx.reply('Сообщение отправлено.');
+      await ctx.reply('Сообщение отправлено.', { reply_parameters: { message_id: ctx.message.message_id } });
     } catch (err) {
       console.error(err);
-      await ctx.reply('Не удалось отправить сообщение.');
-    }
+      await ctx.reply('Не удалось отправить сообщение.', { reply_parameters: { message_id: ctx.message.message_id } });
+    };
     return;
   };
 });
