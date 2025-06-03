@@ -5,7 +5,6 @@
   "main": "src/main.mts",
   "license": "ISC",
   "author": "",
-  "type": "module",
   "scripts": {
     "start": "vercel dev",
     "build": "ncc build src/main.ts -o public -m"
