@@ -2,6 +2,7 @@ import { Context, Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
+import { send } from 'process';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -31,34 +32,61 @@ const showIDInfo = async (ctx: Context) => {
               const targetChatType = forwarded.type;
               switch (targetChatType) {
                 case "user": { // Пользователь / Бот
+                  const sender = forwarded.sender_user;
                   text += "Тип: " + (
-                    (forwarded.sender_user.is_bot) 
+                    (sender.is_bot) 
                     ? "🤖 Бот\n" 
                     : "👤 Пользователь\n"
                   ) +
-                  `ID: ${forwarded.sender_user.id}\n` +
-                  `Имя: ${forwarded.sender_user.first_name}\n`;
-                  if (forwarded.sender_user.last_name)
-                    text += `Фамилия: ${forwarded.sender_user.last_name}\n`;
+                  `ID: <code>${sender.id}</code>\n` +
+                  `Имя: <i>${sender.first_name}</i>\n`;
+                  if (sender.last_name)
+                    text += `Фамилия: <i>${sender.last_name}</i>\n`;
+                  if (sender.username) 
+                    text += `Тег: @${sender.username}\n`;
                   break;        
                 }
                 case "hidden_user": { // Пользователь с закрытым профилем
-                  text += "Тип: 👤 Скрытый пользователь\n" +
-                          `Никнейм: ${forwarded.sender_user_name}\n`;
+                  text += "Тип: 👤 Скрытый пользователь\n";// +
+                  if (forwarded.sender_user_name) 
+                    text += `Тег: @${forwarded.sender_user_name}`;
                   break;
                 }
                 case "channel": { // Канал
-                  text += "Тип: 📬 Канал\n";
-                  if (forwarded.author_signature) {
-                    text += `Автор: ${forwarded.author_signature}\n`;
-                  };
-                  text += JSON.stringify(forwarded); // debug
-
+                  const sender = forwarded.chat;
+                  const subType = sender.type;
+                  switch (subType) {
+                    case "channel":
+                      text += "Тип: 📬 Канал\n" +
+                              `ID: <code>${sender.id}</code>\n` +
+                              `Название: <i>${sender.title}</i>\n`;
+                      if (sender.username)
+                        text += `Тег: @${sender.username}`;
+                      break;
+                  }
+                  if (forwarded.author_signature) 
+                    text += `Автор: <i>${forwarded.author_signature}</i>\n`;
                   break;
                 }
                 case "chat": { // Чат
-                  text += "Тип: 💬 Чат\n";
-                  text += JSON.stringify(forwarded); // debug
+                  const sender = forwarded.sender_chat;
+                  const subType = sender.type;
+                  switch (subType) {
+                    case "group": { // Чат (группа)
+                      text += "Тип: 💬 Чат (группа)\n" +
+                              `ID: <code>${sender.id}</code>\n` +
+                              `Название: <i>${sender.title}</i>\n`;
+                      break;
+                    };
+                    case "supergroup": { // Чат (супергруппа)
+                      text += "Тип: 💬 Чат (супергруппа)\n" +
+                              `ID: <code>${sender.id}</code>\n` +
+                              `Название: <i>${sender.title}</i>\n`;
+                      if (sender.username) 
+                        text += `Тег: @${sender.username}\n`;
+                      break;
+                    };
+                  }
                   break;
                 }
               }
