@@ -107,38 +107,6 @@ const showIDInfo = async (ctx: Context) => {
   return text;
 }
 
-const sendPostTo = async (ctx: Context, targetId: number) => {
-
-}
-
-
-//const sendMessageTo = async (ctx: Context, targetId: number) => {
-const sendMessageTo = async (source: Message.CommonMessage | Message | undefined, targetId: number) => {
-  if (source) {
-      if ('text' in source && source.text) {
-        await bot.telegram.sendMessage(targetId, source.text);
-      } else if ("photo" in source) {
-        const photo = source.photo.pop();
-        if (photo)
-          await bot.telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
-      } else if ("document" in source) {
-        await bot.telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
-      } else if ("video" in source) {
-        await bot.telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
-      } else if ("audio" in source) {
-        await bot.telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
-      } else if ("voice" in source) {
-        await bot.telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
-      } else if ("sticker" in source) {
-        await bot.telegram.sendSticker(targetId, source.sticker.file_id);
-      } else if ("video_note" in source) {
-        await bot.telegram.sendVideoNote(targetId, source.video_note.file_id)
-      } else {
-        return; // Unhandled message type
-      };
-  };
-};
-
 bot.command("start", async (ctx: Context) => {
   const text = "Привет! Это чат-бот технической поддержки.";
   if (ctx.chat && ctx.message) {
@@ -161,7 +129,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            await sendMessageTo(ctx.message.reply_to_message, targetId);
+            await bot.telegram.copyMessage(targetId, ctx.message.reply_to_message.chat.id, ctx.message.reply_to_message.message_id);
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
@@ -219,7 +187,7 @@ bot.on('message', async (ctx: Context) => {
         return; // No such requested user
       };
       try {
-        await sendMessageTo(ctx.message, targetUserId);
+        await bot.telegram.copyMessage(targetUserId, ctx.message.chat.id, ctx.message.message_id);
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
       } catch (err) {
         console.error(err);
