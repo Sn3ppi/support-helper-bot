@@ -25,7 +25,7 @@ const showIDInfo = async (ctx: Context) => {
       ) {
         const target = ctx.message.reply_to_message;
         if (target.sender_chat) { // Сообщение переслали
-          text += "\n\n" + JSON.stringify(target);
+          text += "\n\n" + JSON.stringify(target.sender_chat);
         }
 
 
