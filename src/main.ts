@@ -2,6 +2,7 @@ import { Context, Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
+import { MessageOriginChat } from 'telegraf/typings/core/types/typegram';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -22,11 +23,15 @@ const showIDInfo = async (ctx: Context) => {
         "reply_to_message" in ctx.message &&
         ctx.message.reply_to_message !== undefined
       ) {
-        const target = ctx.message.reply_to_message;
-        const targetFrom = target.from;
-        if (targetFrom) 
-          text += `\n\nПересланное сообщение:\n` +
-                  `ID чата: ${targetFrom.id}`;
+        const target = ctx.message.forward_origin;
+        text += "\n\n" + JSON.stringify(target);
+
+
+
+        // const targetFrom = target.from;
+        // if (targetFrom) 
+        //   text += `\n\nПересланное сообщение:\n` +
+        //           `ID чата: ${targetFrom.id}`;
       }
     }
     else {
