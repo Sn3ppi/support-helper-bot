@@ -5,6 +5,63 @@ import { getUserByMsg, addUserMsg } from "./db_client";
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
+const showIDInfo = async (ctx: Context) => {
+  const botId = ctx.botInfo.id; // ID этого бота
+  const currentChatId = ctx.chat?.id; // ID чата, откуда вызвали команду
+  const callerChatId = ctx.from?.id; // ID того, кто вызвал команду
+  let text = "";
+  if (currentChatId && callerChatId) {
+    text = `Текущий чат:\n\n` +
+               `ID чата: <code>${currentChatId}</code>\n` +
+               `ID пользователя: <code>${callerChatId}</code>\n` +
+               `ID бота: <code>${botId}</code>`;
+    if (
+      ctx.message &&
+      "reply_to_message" in ctx.message &&
+      ctx.message.reply_to_message !== undefined
+    ) {
+      const target = ctx.message.reply_to_message;
+      const targetChat = target.chat;
+      if (targetChat) {
+        text += `\n\nПересланное сообщение:\n\n`
+        const chatType = targetChat.type;
+        switch (chatType) {
+          case "private": {
+            const targetFrom = target.from;
+            if (targetFrom) {
+              (targetFrom.is_bot) 
+              ? `ID бота: ${target.chat.id}`
+              : `ID пользователя: ${target.chat.id}`
+            };
+            break;
+          }
+          case "group": {
+            const targetFrom = target.from;
+            if (targetFrom) 
+              text += `ID группы: ${target.chat.id}`;
+            break;
+          }
+          case "supergroup": {
+            const targetFrom = target.from;
+            if (targetFrom) 
+              text += `ID супергруппы: ${target.chat.id}`;
+            break;
+          }
+          case "channel": {
+            text += `ID канала: ${target.chat.id}`;
+            break;
+          }
+
+        }
+      }
+    }
+  }
+  else {
+    text = "Не удалось получить ID.";
+  }
+  return text;
+}
+
 bot.command("start", async (ctx) => {
   const text = "Привет! Это чат-бот технической поддержки.";
   (ctx.chat.type === "private")
@@ -18,17 +75,10 @@ bot.command("start", async (ctx) => {
 });
 
 bot.command('id', async (ctx) => {
-  const chatId = ctx.chat?.id;
-  const userId = ctx.from?.id;
-  const botId = ctx.botInfo.id;
-  const text = (chatId && userId) 
-    ? `ID чата: <code>${chatId}</code>\n` +
-                  `ID пользователя: <code>${userId}</code>\n` +
-                  `ID бота: <code>${botId}</code>`
-    : "Не удалось получить ID.";
+  const text = await showIDInfo(ctx);
   (ctx.chat.type === "private")
-    ? await ctx.reply(text, { parse_mode: "HTML" }) 
-    : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
+  ? await ctx.reply(text, { parse_mode: "HTML" }) 
+  : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
 });
 
 bot.on('message', async (ctx) => {
