@@ -2,6 +2,7 @@ import { Context, Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
+import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -106,57 +107,32 @@ const showIDInfo = async (ctx: Context) => {
   return text;
 }
 
+const sendPostTo = async (ctx: Context, targetId: number) => {
+
+}
 
 
-const sendMessageTo = async (ctx: Context, targetId: number, kb: boolean = false) => {
-  if (ctx.message) {
-      if ('text' in ctx.message && ctx.message.text) {
-        (kb)
-          ? await bot.telegram.sendMessage(targetId, ctx.message.text, { reply_markup: await feedBackKb() })
-          : await bot.telegram.sendMessage(targetId, ctx.message.text);
-      } else if ("photo" in ctx.message) {
-        const photo = ctx.message.photo.pop();
+//const sendMessageTo = async (ctx: Context, targetId: number) => {
+const sendMessageTo = async (source: Message.CommonMessage | Message | undefined, targetId: number) => {
+  if (source) {
+      if ('text' in source && source.text) {
+        await bot.telegram.sendMessage(targetId, source.text);
+      } else if ("photo" in source) {
+        const photo = source.photo.pop();
         if (photo)
-          await bot.telegram.sendPhoto(
-            targetId, 
-            photo.file_id, 
-            (kb) ? { caption: ctx.message.caption || '', reply_markup: await feedBackKb() } : { caption: ctx.message.caption || '' }
-          );
-      } else if ("document" in ctx.message) {
-        await bot.telegram.sendDocument(
-          targetId, 
-          ctx.message.document.file_id, 
-          (kb) ? { caption: ctx.message.caption || '', reply_markup: await feedBackKb() } : { caption: ctx.message.caption || '' }
-        );
-      } else if ("video" in ctx.message) {
-        await bot.telegram.sendVideo(
-          targetId, 
-          ctx.message.video.file_id, 
-          (kb) ? { caption: ctx.message.caption || '', reply_markup: await feedBackKb() } : { caption: ctx.message.caption || '' }
-        );
-      } else if ("audio" in ctx.message) {
-        await bot.telegram.sendAudio(
-          targetId, 
-          ctx.message.audio.file_id, 
-          (kb) ? { caption: ctx.message.caption || '', reply_markup: await feedBackKb() } : { caption: ctx.message.caption || '' }
-        );
-      } else if ("voice" in ctx.message) {
-        await bot.telegram.sendVoice(
-          targetId, 
-          ctx.message.voice.file_id, 
-          (kb) ? { caption: ctx.message.caption || '', reply_markup: await feedBackKb() } : { caption: ctx.message.caption || '' }
-        );
-      } else if ("sticker" in ctx.message) {
-        (kb) 
-          ? await bot.telegram.sendSticker(targetId, ctx.message.sticker.file_id, { reply_markup: await feedBackKb() })
-          : await bot.telegram.sendSticker(targetId, ctx.message.sticker.file_id);
-
-
-      } else if ("video_note" in ctx.message) {
-        (kb)
-          ? await bot.telegram.sendVideoNote(targetId, ctx.message.video_note.file_id, { reply_markup: await feedBackKb() })
-          : await bot.telegram.sendVideoNote(targetId, ctx.message.video_note.file_id)
-      
+          await bot.telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
+      } else if ("document" in source) {
+        await bot.telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
+      } else if ("video" in source) {
+        await bot.telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
+      } else if ("audio" in source) {
+        await bot.telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
+      } else if ("voice" in source) {
+        await bot.telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
+      } else if ("sticker" in source) {
+        await bot.telegram.sendSticker(targetId, source.sticker.file_id);
+      } else if ("video_note" in source) {
+        await bot.telegram.sendVideoNote(targetId, source.video_note.file_id)
       } else {
         return; // Unhandled message type
       };
@@ -185,7 +161,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            await sendMessageTo(ctx, targetId, true);
+            await sendMessageTo(ctx.message.reply_to_message, targetId);
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
@@ -243,7 +219,7 @@ bot.on('message', async (ctx: Context) => {
         return; // No such requested user
       };
       try {
-        await sendMessageTo(ctx, targetUserId, false);
+        await sendMessageTo(ctx.message, targetUserId);
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
       } catch (err) {
         console.error(err);
