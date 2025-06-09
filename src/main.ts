@@ -23,9 +23,23 @@ const showIDInfo = async (ctx: Context) => {
         "reply_to_message" in ctx.message &&
         ctx.message.reply_to_message !== undefined
       ) {
-        
         const target = ctx.message.reply_to_message;
-        text += "\n\n" + JSON.stringify(target); // undefined
+        if (target.sender_chat) { // Сообщение переслали
+          text += "\n\n" + JSON.stringify(target);
+        }
+
+
+        // const target = (ctx.message.reply_to_message.sender_chat); // Сообщение переслали
+        // if (target) {
+          
+        //   text += "\n\n" + JSON.stringify(target);
+        
+        // }
+        
+        
+        
+        // target.sender_chat
+        // text += "\n\n" + JSON.stringify(target); // undefined
       }
     }
     else {
