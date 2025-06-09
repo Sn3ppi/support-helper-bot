@@ -2,7 +2,6 @@ import { Context, Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
-import { MessageOriginChat } from 'telegraf/typings/core/types/typegram';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -14,7 +13,7 @@ const showIDInfo = async (ctx: Context) => {
     const callerChatId = ctx.from.id; // ID того, кто вызвал команду
     
     if (currentChatId && callerChatId) {
-      text = `Текущий чат:\n\n` +
+      text = `ℹ️ <b>Текущий чат:</b>\n\n` +
                 `ID чата: <code>${currentChatId}</code>\n` +
                 `ID пользователя: <code>${callerChatId}</code>\n` +
                 `ID бота: <code>${botId}</code>`;
@@ -24,22 +23,48 @@ const showIDInfo = async (ctx: Context) => {
         ctx.message.reply_to_message !== undefined
       ) {
         const target = ctx.message.reply_to_message;
-        if (target.sender_chat) { // Сообщение переслали
-          text += "\n\n" + JSON.stringify(target.sender_chat);
+        if (target) { 
+          if ("forward_origin" in target) { // Данные отправителя пересланного сообщения
+            const forwarded = target.forward_origin;
+            if (forwarded) {
+              text += "\n\nℹ️ <b>Пересланное сообщение:</b>\n\n";
+              const targetChatType = forwarded.type;
+              switch (targetChatType) {
+                case "user": { // Пользователь / Бот
+                  text += "Тип: " + (
+                    (forwarded.sender_user.is_bot) 
+                    ? "🤖 Бот\n" 
+                    : "👤 Пользователь\n"
+                  ) +
+                  `ID: ${forwarded.sender_user.id}\n` +
+                  `Имя: ${forwarded.sender_user.first_name}\n`;
+                  if (forwarded.sender_user.last_name)
+                    text += `Фамилия: ${forwarded.sender_user.last_name}\n`;
+                  break;        
+                }
+                case "hidden_user": { // Пользователь с закрытым профилем
+                  text += "Тип: 👤 Скрытый пользователь\n" +
+                          `Никнейм: ${forwarded.sender_user_name}\n`;
+                  break;
+                }
+                case "channel": { // Канал
+                  text += "Тип: 📬 Канал\n";
+                  if (forwarded.author_signature) {
+                    text += `Автор: ${forwarded.author_signature}\n`;
+                  };
+                  text += JSON.stringify(forwarded); // debug
+
+                  break;
+                }
+                case "chat": { // Чат
+                  text += "Тип: 💬 Чат\n";
+                  text += JSON.stringify(forwarded); // debug
+                  break;
+                }
+              }
+            }
+          }
         }
-
-
-        // const target = (ctx.message.reply_to_message.sender_chat); // Сообщение переслали
-        // if (target) {
-          
-        //   text += "\n\n" + JSON.stringify(target);
-        
-        // }
-        
-        
-        
-        // target.sender_chat
-        // text += "\n\n" + JSON.stringify(target); // undefined
       }
     }
     else {
