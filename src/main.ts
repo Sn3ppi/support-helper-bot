@@ -23,15 +23,9 @@ const showIDInfo = async (ctx: Context) => {
         "reply_to_message" in ctx.message &&
         ctx.message.reply_to_message !== undefined
       ) {
-        const target = ctx.message.forward_origin;
-        text += "\n\n" + JSON.stringify(target);
-
-
-
-        // const targetFrom = target.from;
-        // if (targetFrom) 
-        //   text += `\n\nПересланное сообщение:\n` +
-        //           `ID чата: ${targetFrom.id}`;
+        
+        const target = ctx.message.reply_to_message;
+        text += "\n\n" + JSON.stringify(target); // undefined
       }
     }
     else {
