@@ -23,39 +23,10 @@ const showIDInfo = async (ctx: Context) => {
         ctx.message.reply_to_message !== undefined
       ) {
         const target = ctx.message.reply_to_message;
-        const targetChat = target.chat;
-        if (targetChat) {
-          text += `\n\nПересланное сообщение:\n\n`
-          const chatType = targetChat.type;
-          switch (chatType) {
-            case "private": {
-              const targetFrom = target.from;
-              if (targetFrom) {
-                (targetFrom.is_bot) 
-                ? `ID бота: ${target.chat.id}`
-                : `ID пользователя: ${target.chat.id}`
-              };
-              break;
-            }
-            case "group": {
-              const targetFrom = target.from;
-              if (targetFrom) 
-                text += `ID группы: ${target.chat.id}`;
-              break;
-            }
-            case "supergroup": {
-              const targetFrom = target.from;
-              if (targetFrom) 
-                text += `ID супергруппы: ${target.chat.id}`;
-              break;
-            }
-            case "channel": {
-              text += `ID канала: ${target.chat.id}`;
-              break;
-            }
-
-          }
-        }
+        const targetFrom = target.from;
+        if (targetFrom) 
+          text += `\n\nПересланное сообщение:\n` +
+                  `ID чата: ${targetFrom.id}`;
       }
     }
     else {
