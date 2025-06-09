@@ -2,7 +2,6 @@ import { Context, Markup, Telegraf } from 'telegraf';
 
 import config from "./config";
 import { getUserByMsg, addUserMsg } from "./db_client";
-import { send } from 'process';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -15,9 +14,9 @@ const showIDInfo = async (ctx: Context) => {
     
     if (currentChatId && callerChatId) {
       text = `ℹ️ <b>Текущий чат:</b>\n\n` +
-                `ID чата: <code>${currentChatId}</code>\n` +
-                `ID пользователя: <code>${callerChatId}</code>\n` +
-                `ID бота: <code>${botId}</code>`;
+                `💬 ID чата: <code>${currentChatId}</code>\n` +
+                `👤 ID пользователя: <code>${callerChatId}</code>\n` +
+                `🤖 ID бота: <code>${botId}</code>`;
       if (
         ctx.message &&
         "reply_to_message" in ctx.message &&
@@ -47,9 +46,8 @@ const showIDInfo = async (ctx: Context) => {
                   break;        
                 }
                 case "hidden_user": { // Пользователь с закрытым профилем
-                  text += "Тип: 👤 Скрытый пользователь\n";// +
-                  if (forwarded.sender_user_name) 
-                    text += `Тег: @${forwarded.sender_user_name}`;
+                  text += "Тип: 👤 Скрытый пользователь\n" +
+                          `Имя пользователя: ${forwarded.sender_user_name}`;
                   break;
                 }
                 case "channel": { // Канал
@@ -102,10 +100,36 @@ const showIDInfo = async (ctx: Context) => {
   return text;
 }
 
+const sendMessageTo = async (ctx: Context, targetId: number) => {
+  if (ctx.message) {
+      if ('text' in ctx.message && ctx.message.text) {
+        await bot.telegram.sendMessage(targetId, ctx.message.text);
+      } else if ("photo" in ctx.message) {
+        const photo = ctx.message.photo.pop();
+        if (photo)
+          await bot.telegram.sendPhoto(targetId, photo.file_id, { caption: ctx.message.caption || '' });
+      } else if ("document" in ctx.message) {
+        await bot.telegram.sendDocument(targetId, ctx.message.document.file_id, { caption: ctx.message.caption || '' });
+      } else if ("video" in ctx.message) {
+        await bot.telegram.sendVideo(targetId, ctx.message.video.file_id, { caption: ctx.message.caption || '' });
+      } else if ("audio" in ctx.message) {
+        await bot.telegram.sendAudio(targetId, ctx.message.audio.file_id, { caption: ctx.message.caption || '' });
+      } else if ("voice" in ctx.message) {
+        await bot.telegram.sendVoice(targetId, ctx.message.voice.file_id, { caption: ctx.message.caption || '' });
+      } else if ("sticker" in ctx.message) {
+        await bot.telegram.sendSticker(targetId, ctx.message.sticker.file_id);
+      } else if ("video_note" in ctx.message) {
+        await bot.telegram.sendVideoNote(targetId, ctx.message.video_note.file_id);
+      } else {
+        return; // Unhandled message type
+      };
+  };
+};
+
 bot.command("start", async (ctx: Context) => {
   const text = "Привет! Это чат-бот технической поддержки.";
   if (ctx.chat && ctx.message) {
-  (ctx.chat?.type === "private")
+  (ctx.chat.type === "private")
     ? await ctx.reply(text)
     : await ctx.reply(text, { 
       reply_parameters: { message_id: ctx.message.message_id }, 
@@ -116,11 +140,47 @@ bot.command("start", async (ctx: Context) => {
   };
 });
 
-bot.command('id', async (ctx) => {
+bot.command('post', async (ctx) => {
+  const targetId = Number(config.ADMIN_CHANNEL);
+  if (ctx.chat && ctx.message) {
+    if (ctx.chat.id === Number(config.ADMIN_CHAT)) { // Команда доступна только администрации
+      if (targetId) { // Канал администрации указан?
+        if (
+          "reply_to_message" in ctx.message &&
+           ctx.message.reply_to_message !== undefined
+        ) {
+          try {
+            await sendMessageTo(ctx, targetId);
+            await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
+          } catch (err) {
+            console.error(err);
+            await ctx.reply("Не удалось отправить сообщение в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
+          };
+        }
+        else {
+          await ctx.reply(`Выберите сообщение и ответьте на него командой /post@${(await bot.telegram.getMe()).username} для отправки на канал.`, 
+            { reply_parameters: { message_id: ctx.message.message_id } }
+          );
+        }
+      }
+      else {
+        await ctx.reply(
+          `Укажите ID канала в конфигурационном файле.\n` +
+          `Чтобы узнать ID канала, отправьте сообщение из него боту и ответьте на него командой /id@${(await bot.telegram.getMe()).username}.`,
+           { reply_parameters: { message_id: ctx.message.message_id } }
+          );
+      }
+    }
+  }
+})
+
+bot.command('id', async (ctx: Context) => {
   const text = await showIDInfo(ctx);
-  (ctx.chat.type === "private")
-  ? await ctx.reply(text, { parse_mode: "HTML" }) 
-  : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
+  if (ctx.chat && ctx.message) {
+    (ctx.chat.type === "private")
+    ? await ctx.reply(text, { parse_mode: "HTML" }) 
+    : await ctx.reply(text, { parse_mode: "HTML", reply_parameters: { message_id: ctx.message.message_id } });
+  }
 });
 
 bot.on('message', async (ctx: Context) => {
@@ -138,8 +198,7 @@ bot.on('message', async (ctx: Context) => {
       return;
     };
     if (
-      ctx.chat?.id === Number(config.ADMIN_CHAT) &&
-      ctx.message &&
+      ctx.chat.id === Number(config.ADMIN_CHAT) &&
       "reply_to_message" in ctx.message &&
       ctx.message.reply_to_message !== undefined
     ) {
@@ -149,27 +208,7 @@ bot.on('message', async (ctx: Context) => {
         return; // No such requested user
       };
       try {
-        if ('text' in ctx.message && ctx.message.text) {
-          await bot.telegram.sendMessage(targetUserId, ctx.message.text);
-        } else if ("photo" in ctx.message) {
-          const photo = ctx.message.photo.pop();
-          if (photo)
-            await bot.telegram.sendPhoto(targetUserId, photo.file_id, { caption: ctx.message.caption || '' });
-        } else if ("document" in ctx.message) {
-          await bot.telegram.sendDocument(targetUserId, ctx.message.document.file_id, { caption: ctx.message.caption || '' });
-        } else if ("video" in ctx.message) {
-          await bot.telegram.sendVideo(targetUserId, ctx.message.video.file_id, { caption: ctx.message.caption || '' });
-        } else if ("audio" in ctx.message) {
-          await bot.telegram.sendAudio(targetUserId, ctx.message.audio.file_id, { caption: ctx.message.caption || '' });
-        } else if ("voice" in ctx.message) {
-          await bot.telegram.sendVoice(targetUserId, ctx.message.voice.file_id, { caption: ctx.message.caption || '' });
-        } else if ("sticker" in ctx.message) {
-          await bot.telegram.sendSticker(targetUserId, ctx.message.sticker.file_id);
-        } else if ("video_note" in ctx.message) {
-          await bot.telegram.sendVideoNote(targetUserId, ctx.message.video_note.file_id);
-        } else {
-          return; // Unhandled message type
-        };
+        await sendMessageTo(ctx, targetUserId);
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
       } catch (err) {
         console.error(err);
