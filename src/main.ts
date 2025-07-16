@@ -161,18 +161,83 @@ bot.command('id', async (ctx: Context) => {
   }
 });
 
-const waitGroup = async (groupId: string, timeoutMs: number = 1500): Promise<void> => {
-  while (true) {
-    const oldest = await getOldestTimestamp(groupId);
-    if (!oldest) return;
+bot.on('message', async (ctx: Context) => {
+  if (!ctx.chat || !ctx.message) return;
 
-    const elapsed = Date.now() - oldest.getTime();
-    if (elapsed >= timeoutMs) {
+  const userId = ctx.chat.id;
+
+  if (ctx.chat.type === "private") {
+    if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
+      const groupId = ctx.message.media_group_id;
+
+      try {
+        const { type, file_id, caption } = extractMedia(ctx.message);
+        await addMediaItem(groupId, file_id, type, caption || null);
+
+        // пробуем отправить альбом (только один из вызовов его отправит)
+        await trySendMediaGroup(ctx.telegram, groupId, Number(config.ADMIN_CHAT), userId);
+
+      } catch (err) {
+        console.error(err);
+        await ctx.reply("Не удалось отправить сообщение");
+      }
+
       return;
     }
 
-    await new Promise((res) => setTimeout(res, 300));
+    try {
+      const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
+      await addUserMsg(forward.message_id, userId);
+      await ctx.reply("Сообщение отправлено.");
+    } catch (err) {
+      console.error(err);
+      await ctx.reply("Не удалось отправить сообщение.");
+    }
+
+    return;
   }
+
+  if (
+    ctx.chat.id === Number(config.ADMIN_CHAT) &&
+    "reply_to_message" in ctx.message &&
+    ctx.message.reply_to_message
+  ) {
+    const repliedMsg = ctx.message.reply_to_message;
+    const targetUserId = await getUserByMsg(repliedMsg.message_id);
+    if (!targetUserId) return;
+
+    try {
+      await sendMessageTo(ctx.telegram, ctx.message, targetUserId);
+      await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
+    } catch (err) {
+      console.error(err);
+      await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
+    }
+
+    return;
+  }
+});
+
+const trySendMediaGroup = async (
+  telegram: Telegram,
+  groupId: string,
+  targetId: number,
+  userId: number
+) => {
+  await sleep(1000);
+  const oldest = await getOldestTimestamp(groupId);
+  if (!oldest) return;
+  const elapsed = Date.now() - oldest.getTime();
+  if (elapsed < 1000) {
+    return;
+  }
+  const mediaItems = await getMediaGroup(groupId);
+  if (!mediaItems.length) return;
+  const sent = await telegram.sendMediaGroup(targetId, mediaItems);
+  for (const msg of sent) {
+    await addUserMsg(msg.message_id, userId);
+  }
+  await deleteMediaGroup(groupId);
 };
 
 function extractMedia(msg: any) {
@@ -191,62 +256,7 @@ function extractMedia(msg: any) {
   throw new Error("Unsupported media type");
 }
 
-bot.on('message', async (ctx: Context) => {
-  if (ctx.chat && ctx.message) {
-    const userId = ctx.chat.id;
-    if (ctx.chat?.type === "private") {
-      if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
-        const groupId = ctx.message.media_group_id;
-        try {
-          const { type, file_id, caption } = extractMedia(ctx.message);
-          await addMediaItem(groupId, file_id, type, caption || null);
-          await waitGroup(groupId);
-          const mediaItems = await getMediaGroup(groupId);
-          if (mediaItems.length) {
-            const sent = await ctx.telegram.sendMediaGroup(config.ADMIN_CHAT, mediaItems);
-            for (const msg of sent) {
-              await addUserMsg(msg.message_id, userId);
-            };
-            await deleteMediaGroup(groupId);
-            await ctx.reply("Сообщение отправлено.");
-          }
-        } catch (err) {
-          console.log(err);
-          await ctx.reply("Не удалось отправить сообщение");
-        };
-        return;
-      };
-      try {
-        const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
-        await addUserMsg(forward.message_id, userId);
-        await ctx.reply("Сообщение отправлено.");
-      } catch (err) {
-        console.error(err);
-        await ctx.reply("Не удалось отправить сообщение.");
-      };
-      return;
-    };
-    if (
-      ctx.chat.id === Number(config.ADMIN_CHAT) &&
-      "reply_to_message" in ctx.message &&
-      ctx.message.reply_to_message !== undefined
-    ) {
-      const repliedMsg = ctx.message.reply_to_message;
-      const targetUserId = await getUserByMsg(repliedMsg.message_id);
-      if (!targetUserId) {
-        return; // No such requested user
-      };
-      try {
-        await sendMessageTo(ctx.telegram, ctx.message, targetUserId); // <-----
-        await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
-      } catch (err) {
-        console.error(err);
-        await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
-      };
-      return;
-    };
-  };
-});
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 const sendMessageTo = async (
   telegram: Telegram,
