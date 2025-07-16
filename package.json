@@ -10,6 +10,7 @@
     "build": "ncc build src/main.ts -o public -m"
   },
   "dependencies": {
+    "@dietime/telegraf-media-group": "^1.0.5",
     "@types/pg": "8.10",
     "dotenv": "^16.5.0",
     "pg": "^8.10.0",

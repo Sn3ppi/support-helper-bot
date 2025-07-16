@@ -1,88 +1,10 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg } from "./db_client";
+import { getUserByMsg, addUserMsg, getMediaGroup, addMediaGroup } from "./db_client";
 import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
-
-const sendMessageTo = async (
-  telegram: Telegram,
-  source: Message.CommonMessage | Message | undefined,
-  targetId: number
-) => {
-  if (!source) return;
-
-  const mediaGroups: { [key: string]: any[] } = {
-    photo: [],
-    video: [],
-    document: [],
-    audio: [],
-    voice: [],
-    sticker: [],
-    video_note: [],
-  };
-
-  // Разделяем медиа по типам
-  if ('photo' in source) {
-    source.photo.forEach((photo) => {
-      mediaGroups.photo.push({
-        type: 'photo',
-        media: photo.file_id,
-        caption: source.caption || '',
-      });
-    });
-  }
-  if ('video' in source) {
-    mediaGroups.video.push({
-      type: 'video',
-      media: source.video.file_id,
-      caption: source.caption || '',
-    });
-  }
-  if ('document' in source) {
-    mediaGroups.document.push({
-      type: 'document',
-      media: source.document.file_id,
-      caption: source.caption || '',
-    });
-  }
-  if ('audio' in source) {
-    mediaGroups.audio.push({
-      type: 'audio',
-      media: source.audio.file_id,
-      caption: source.caption || '',
-    });
-  }
-  if ('voice' in source) {
-    mediaGroups.voice.push({
-      type: 'voice',
-      media: source.voice.file_id,
-      caption: source.caption || '',
-    });
-  }
-  if ('sticker' in source) {
-    mediaGroups.sticker.push({
-      type: 'sticker',
-      media: source.sticker.file_id,
-    });
-  }
-  if ('video_note' in source) {
-    mediaGroups.video_note.push({
-      type: 'video_note',
-      media: source.video_note.file_id,
-    });
-  }
-
-  // Отправляем каждую группу медиа
-  for (const [type, mediaGroup] of Object.entries(mediaGroups)) {
-    if (mediaGroup.length > 0) {
-      await telegram.sendMediaGroup(targetId, mediaGroup);
-    }
-  }
-};
-
-
 
 const feedBackKb = async () => {
   return (Markup.inlineKeyboard([
@@ -96,7 +18,6 @@ const showIDInfo = async (ctx: Context) => {
   if (ctx.chat && ctx.from) {
     const currentChatId = ctx.chat.id; // ID чата, откуда вызвали команду
     const callerChatId = ctx.from.id; // ID того, кто вызвал команду
-    
     if (currentChatId && callerChatId) {
       text = `ℹ️ <b>Текущий чат:</b>\n\n` +
                 `💬 ID чата: <code>${currentChatId}</code>\n` +
@@ -183,7 +104,7 @@ const showIDInfo = async (ctx: Context) => {
     }
   };
   return text;
-}
+};
 
 bot.command("start", async (ctx: Context) => {
   const text = "Привет! Это чат-бот технической поддержки.";
@@ -207,7 +128,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            await sendMessageTo(bot.telegram, ctx.message.reply_to_message, targetId);
+            //await bot.telegram.copyMessage(targetId, ctx.message.reply_to_message.chat.id, ctx.message.reply_to_message.message_id); // <-----
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
@@ -244,9 +165,42 @@ bot.on('message', async (ctx: Context) => {
   if (ctx.chat && ctx.message) {
     const userId = ctx.chat.id;
     if (ctx.chat?.type === "private") {
+      if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
+        const groupId = ctx.message.media_group_id;
+        let contentType = "";
+        let fileId = "";
+        let caption = null;
+        const msg = ctx.message as Message.PhotoMessage | Message.VideoMessage | Message.DocumentMessage | Message.AudioMessage;
+        if ("photo" in msg && msg.photo) {
+          contentType = "photo";
+          fileId = msg.photo.at(-1)?.file_id!;
+          caption = msg.caption || null;
+        }
+        else if ("video" in msg && msg.video) {
+          contentType = "video";
+          fileId = msg.video.file_id;
+          caption = msg.caption || null;
+        }
+        else if ("document" in msg && msg.document) {
+          contentType = "document";
+          fileId = msg.document.file_id;
+          caption = msg.caption || null;
+
+        }
+        else if ("audio" in msg && msg.audio) {
+          contentType = "audio";
+          fileId = msg.audio.file_id;
+          caption = msg.caption || null;
+        }
+        if (contentType && fileId) {
+          await addMediaGroup(groupId, [
+            {media: fileId, type: contentType, caption: caption}
+          ]);
+        };
+      }
       try {
-        const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
-        await addUserMsg(forward.message_id, userId);
+        await sendMessageTo(ctx.telegram, ctx.message, Number(config.ADMIN_CHAT));
+        await addUserMsg(ctx.message.message_id, userId);
         await ctx.reply("Сообщение отправлено.");
       } catch (err) {
         console.error(err);
@@ -265,7 +219,7 @@ bot.on('message', async (ctx: Context) => {
         return; // No such requested user
       };
       try {
-        await sendMessageTo(bot.telegram, ctx.message, targetUserId);
+        await sendMessageTo(ctx.telegram, ctx.message, targetUserId); // <-----
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
       } catch (err) {
         console.error(err);
@@ -275,3 +229,44 @@ bot.on('message', async (ctx: Context) => {
     };
   };
 });
+
+const sendMessageTo = async (
+  telegram: Telegram,
+  source: Message.CommonMessage | Message | undefined,
+  targetId: number
+) => {
+  if (!source) return;
+  // Несколько вложений
+  if ('media_group_id' in source && source.media_group_id) {
+    const groupId = source.media_group_id;
+    const mediaItems = await getMediaGroup(groupId);
+    if (!mediaItems.length) {
+      console.error(`[ERROR] media_group ${groupId} not found in DB`);
+      return;
+    };
+    await telegram.sendMediaGroup(targetId, mediaItems);
+    return;
+  };
+  // Одно вложение
+  if ('text' in source && source.text) {
+    await telegram.sendMessage(targetId, source.text);
+  } else if ('photo' in source) {
+    const photo = source.photo.pop();
+    if (photo)
+      await telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
+  } else if ('document' in source) {
+    await telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
+  } else if ('video' in source) {
+    await telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
+  } else if ('audio' in source) {
+    await telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
+  } else if ('voice' in source) {
+    await telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
+  } else if ('sticker' in source) {
+    await telegram.sendSticker(targetId, source.sticker.file_id);
+  } else if ('video_note' in source) {
+    await telegram.sendVideoNote(targetId, source.video_note.file_id);
+  } else {
+    console.warn("Unhandled message type");
+  }
+};
