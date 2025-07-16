@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg, getMediaGroup, addMediaItem, getOldestTimestamp, deleteMediaGroup } from "./db_client";
+import { getUserByMsg, addUserMsg } from "./db_client";
 import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
@@ -18,6 +18,7 @@ const showIDInfo = async (ctx: Context) => {
   if (ctx.chat && ctx.from) {
     const currentChatId = ctx.chat.id; // ID чата, откуда вызвали команду
     const callerChatId = ctx.from.id; // ID того, кто вызвал команду
+    
     if (currentChatId && callerChatId) {
       text = `ℹ️ <b>Текущий чат:</b>\n\n` +
                 `💬 ID чата: <code>${currentChatId}</code>\n` +
@@ -104,7 +105,33 @@ const showIDInfo = async (ctx: Context) => {
     }
   };
   return text;
-};
+}
+
+const sendMessageTo = async (telegram: Telegram, source: Message.CommonMessage | Message | undefined, targetId: number) => {
+  if (source) {
+      if ('text' in source && source.text) {
+        await telegram.sendMessage(targetId, source.text);
+      } else if ("photo" in source) {
+        const photo = source.photo.pop();
+        if (photo)
+          await telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
+      } else if ("document" in source) {
+        await telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
+      } else if ("video" in source) {
+        await telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
+      } else if ("audio" in source) {
+        await telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
+      } else if ("voice" in source) {
+        await telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
+      } else if ("sticker" in source) {
+        await telegram.sendSticker(targetId, source.sticker.file_id);
+      } else if ("video_note" in source) {
+        await telegram.sendVideoNote(targetId, source.video_note.file_id)
+      } else {
+        return; // Unhandled message type
+      };
+    };
+  };
 
 bot.command("start", async (ctx: Context) => {
   const text = "Привет! Это чат-бот технической поддержки.";
@@ -128,7 +155,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            //await bot.telegram.copyMessage(targetId, ctx.message.reply_to_message.chat.id, ctx.message.reply_to_message.message_id); // <-----
+            await sendMessageTo(bot.telegram, ctx.message, targetId);
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
@@ -162,139 +189,37 @@ bot.command('id', async (ctx: Context) => {
 });
 
 bot.on('message', async (ctx: Context) => {
-  if (!ctx.chat || !ctx.message) return;
-
-  const userId = ctx.chat.id;
-
-  if (ctx.chat.type === "private") {
-    if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
-      const groupId = ctx.message.media_group_id;
-
+  if (ctx.chat && ctx.message) {
+    const userId = ctx.chat.id;
+    if (ctx.chat?.type === "private") {
       try {
-        const { type, file_id, caption } = extractMedia(ctx.message);
-        await addMediaItem(groupId, file_id, type, caption || null);
-
-        // пробуем отправить альбом (только один из вызовов его отправит)
-        await trySendMediaGroup(ctx.telegram, groupId, Number(config.ADMIN_CHAT), userId);
-
+        const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
+        await addUserMsg(forward.message_id, userId);
+        await ctx.reply("Сообщение отправлено.");
       } catch (err) {
         console.error(err);
-        await ctx.reply("Не удалось отправить сообщение");
-      }
-
-      return;
-    }
-
-    try {
-      const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
-      await addUserMsg(forward.message_id, userId);
-      await ctx.reply("Сообщение отправлено.");
-    } catch (err) {
-      console.error(err);
-      await ctx.reply("Не удалось отправить сообщение.");
-    }
-
-    return;
-  }
-
-  if (
-    ctx.chat.id === Number(config.ADMIN_CHAT) &&
-    "reply_to_message" in ctx.message &&
-    ctx.message.reply_to_message
-  ) {
-    const repliedMsg = ctx.message.reply_to_message;
-    const targetUserId = await getUserByMsg(repliedMsg.message_id);
-    if (!targetUserId) return;
-
-    try {
-      await sendMessageTo(ctx.telegram, ctx.message, targetUserId);
-      await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
-    } catch (err) {
-      console.error(err);
-      await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
-    }
-
-    return;
-  }
-});
-
-const trySendMediaGroup = async (
-  telegram: Telegram,
-  groupId: string,
-  targetId: number,
-  userId: number
-) => {
-  await sleep(1000);
-  const oldest = await getOldestTimestamp(groupId);
-  if (!oldest) return;
-  const elapsed = Date.now() - oldest.getTime();
-  if (elapsed < 1000) {
-    return;
-  }
-  const mediaItems = await getMediaGroup(groupId);
-  if (!mediaItems.length) return;
-  const sent = await telegram.sendMediaGroup(targetId, mediaItems);
-  for (const msg of sent) {
-    await addUserMsg(msg.message_id, userId);
-  }
-  await deleteMediaGroup(groupId);
-};
-
-function extractMedia(msg: any) {
-  if ("photo" in msg && msg.photo) {
-    return { type: "photo", file_id: msg.photo.at(-1)!.file_id, caption: msg.caption || null };
-  }
-  if ("video" in msg && msg.video) {
-    return { type: "video", file_id: msg.video.file_id, caption: msg.caption || null };
-  }
-  if ("document" in msg && msg.document) {
-    return { type: "document", file_id: msg.document.file_id, caption: msg.caption || null };
-  }
-  if ("audio" in msg && msg.audio) {
-    return { type: "audio", file_id: msg.audio.file_id, caption: msg.caption || null };
-  }
-  throw new Error("Unsupported media type");
-}
-
-const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
-const sendMessageTo = async (
-  telegram: Telegram,
-  source: Message.CommonMessage | Message | undefined,
-  targetId: number
-) => {
-  if (!source) return;
-  // Несколько вложений
-  if ('media_group_id' in source && source.media_group_id) {
-    const groupId = source.media_group_id;
-    const mediaItems = await getMediaGroup(groupId);
-    if (!mediaItems.length) {
-      console.error(`[ERROR] media_group ${groupId} not found in DB`);
+        await ctx.reply("Не удалось отправить сообщение.");
+      };
       return;
     };
-    await telegram.sendMediaGroup(targetId, mediaItems);
-    return;
+    if (
+      ctx.chat.id === Number(config.ADMIN_CHAT) &&
+      "reply_to_message" in ctx.message &&
+      ctx.message.reply_to_message !== undefined
+    ) {
+      const repliedMsg = ctx.message.reply_to_message;
+      const targetUserId = await getUserByMsg(repliedMsg.message_id);
+      if (!targetUserId) {
+        return; // No such requested user
+      };
+      try {
+        await sendMessageTo(bot.telegram, ctx.message, targetUserId);
+        await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
+      } catch (err) {
+        console.error(err);
+        await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
+      };
+      return;
+    };
   };
-  // Одно вложение
-  if ('text' in source && source.text) {
-    await telegram.sendMessage(targetId, source.text);
-  } else if ('photo' in source) {
-    const photo = source.photo.pop();
-    if (photo)
-      await telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
-  } else if ('document' in source) {
-    await telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
-  } else if ('video' in source) {
-    await telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
-  } else if ('audio' in source) {
-    await telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
-  } else if ('voice' in source) {
-    await telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
-  } else if ('sticker' in source) {
-    await telegram.sendSticker(targetId, source.sticker.file_id);
-  } else if ('video_note' in source) {
-    await telegram.sendVideoNote(targetId, source.video_note.file_id);
-  } else {
-    console.warn("Unhandled message type");
-  }
-};
+});
