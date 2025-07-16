@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { bot } from '../src/main';
 import config from '../src/config';
-import { createMediaTable, createMsgTable } from "../src/db_client";
+import { createMsgTable } from "../src/db_client";
 
 if (
   !config.BOT_TOKEN ||
@@ -18,7 +18,6 @@ if (
 
 (async () => {
   await createMsgTable();
-  await createMediaTable();
 })();
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {

@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg } from "./db_client";
+import { getUserByMsg, addUserMsg } from "./db_client"; 
 import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
