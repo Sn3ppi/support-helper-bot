@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg, getMediaGroup, addMediaGroup } from "./db_client";
+import { getUserByMsg, addUserMsg, getMediaGroup, addMediaItem, getOldestTimestamp, deleteMediaGroup } from "./db_client";
 import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
@@ -161,46 +161,64 @@ bot.command('id', async (ctx: Context) => {
   }
 });
 
+const waitGroup = async (groupId: string, timeoutMs: number = 1500): Promise<void> => {
+  while (true) {
+    const oldest = await getOldestTimestamp(groupId);
+    if (!oldest) return;
+
+    const elapsed = Date.now() - oldest.getTime();
+    if (elapsed >= timeoutMs) {
+      return;
+    }
+
+    await new Promise((res) => setTimeout(res, 300));
+  }
+};
+
+function extractMedia(msg: any) {
+  if ("photo" in msg && msg.photo) {
+    return { type: "photo", file_id: msg.photo.at(-1)!.file_id, caption: msg.caption || null };
+  }
+  if ("video" in msg && msg.video) {
+    return { type: "video", file_id: msg.video.file_id, caption: msg.caption || null };
+  }
+  if ("document" in msg && msg.document) {
+    return { type: "document", file_id: msg.document.file_id, caption: msg.caption || null };
+  }
+  if ("audio" in msg && msg.audio) {
+    return { type: "audio", file_id: msg.audio.file_id, caption: msg.caption || null };
+  }
+  throw new Error("Unsupported media type");
+}
+
 bot.on('message', async (ctx: Context) => {
   if (ctx.chat && ctx.message) {
     const userId = ctx.chat.id;
     if (ctx.chat?.type === "private") {
       if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
         const groupId = ctx.message.media_group_id;
-        let contentType = "";
-        let fileId = "";
-        let caption = null;
-        const msg = ctx.message as Message.PhotoMessage | Message.VideoMessage | Message.DocumentMessage | Message.AudioMessage;
-        if ("photo" in msg && msg.photo) {
-          contentType = "photo";
-          fileId = msg.photo.at(-1)?.file_id!;
-          caption = msg.caption || null;
-        }
-        else if ("video" in msg && msg.video) {
-          contentType = "video";
-          fileId = msg.video.file_id;
-          caption = msg.caption || null;
-        }
-        else if ("document" in msg && msg.document) {
-          contentType = "document";
-          fileId = msg.document.file_id;
-          caption = msg.caption || null;
-
-        }
-        else if ("audio" in msg && msg.audio) {
-          contentType = "audio";
-          fileId = msg.audio.file_id;
-          caption = msg.caption || null;
-        }
-        if (contentType && fileId) {
-          await addMediaGroup(groupId, [
-            {media: fileId, type: contentType, caption: caption}
-          ]);
+        try {
+          const { type, file_id, caption } = extractMedia(ctx.message);
+          await addMediaItem(groupId, file_id, type, caption || null);
+          await waitGroup(groupId);
+          const mediaItems = await getMediaGroup(groupId);
+          if (mediaItems.length) {
+            const sent = await ctx.telegram.sendMediaGroup(config.ADMIN_CHAT, mediaItems);
+            for (const msg of sent) {
+              await addUserMsg(msg.message_id, userId);
+            };
+            await deleteMediaGroup(groupId);
+            await ctx.reply("Сообщение отправлено.");
+          }
+        } catch (err) {
+          console.log(err);
+          await ctx.reply("Не удалось отправить сообщение");
         };
-      }
+        return;
+      };
       try {
-        await sendMessageTo(ctx.telegram, ctx.message, Number(config.ADMIN_CHAT));
-        await addUserMsg(ctx.message.message_id, userId);
+        const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
+        await addUserMsg(forward.message_id, userId);
         await ctx.reply("Сообщение отправлено.");
       } catch (err) {
         console.error(err);

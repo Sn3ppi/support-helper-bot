@@ -79,37 +79,17 @@ const createMediaTable = async () => {
     }
 };
 
-const addMediaGroup = async (
-    mediaGroupId: string,
-    items: Array<{
-        media: string;
-        type: string;
-        caption?: string | null;
-    }>
-): Promise<void> => {
-    const query = `
-        INSERT INTO media_groups (
-            group_id,
-            file_id,
-            media_type,
-            caption
-        ) VALUES ($1, $2, $3, $4)
-    `;
-    const client = await pool.connect();
-    try {
-        await client.query("BEGIN");
-        for (const m of items)
-            await client.query(query, [mediaGroupId, m.media, m.type, m.caption || null]);
-        await client.query("COMMIT");
-    }
-    catch (err) {
-        await client.query("ROLLBACK");
-        console.log(err);
-    }
-    finally {
-        client.release();
-    }
-}
+const addMediaItem = async (
+    groupId: string,
+    media: string,
+    type: string,
+    caption: string | null
+) => {
+    await pool.query(`
+        INSERT INTO media_groups (group_id, file_id, media_type, caption) VALUES ($1, $2, $3, $4)`,
+        [groupId, media, type, caption]
+    );
+};
 
 const getMediaGroup = async (groupId: string) => {
   const query = `
@@ -129,4 +109,15 @@ const getMediaGroup = async (groupId: string) => {
   });
 };
 
-export { createMsgTable, getUserByMsg, addUserMsg, createMediaTable, addMediaGroup, getMediaGroup };
+const deleteMediaGroup = async (groupId: string) => {
+    await pool.query(`DELETE FROM media_groups WHERE group_id = $1`, [groupId]);
+}
+
+const getOldestTimestamp = async (groupId: string) => {
+    const res = await pool.query(
+        `SELECT MIN(created_at) AS oldest FROM media_groups WHERE group_id = $1`, [groupId]
+    );
+    return res.rows[0]?.oldest ? new Date(res.rows[0].oldest) : null;
+}
+
+export { createMsgTable, getUserByMsg, addUserMsg, createMediaTable, addMediaItem, getMediaGroup, deleteMediaGroup, getOldestTimestamp };
