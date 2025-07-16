@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 
 import config from "./config";
+import { media_group } from '@dietime/telegraf-media-group';
 
 /* == Когфигурация БД == */
 
@@ -14,7 +15,7 @@ const pool = new Pool({
 
 /* == Таблица ID сообщений == */
 
-const createMsgTable = async () => {
+const createMsgTable = async (): Promise<void> => {
     const query = `
         CREATE TABLE IF NOT EXISTS messages (
             message_id BIGINT PRIMARY KEY,
@@ -30,7 +31,7 @@ const createMsgTable = async () => {
     }
 };
 
-const getUserByMsg = async (messageId: number) => {
+const getUserByMsg = async (messageId: number): Promise<any> => {
     const query = "SELECT user_id FROM messages WHERE message_id = $1";
     try {
         const res = await pool.query(query, [messageId]);
@@ -58,4 +59,73 @@ const addUserMsg = async (messageId: number, userId: number): Promise<void> => {
     }
 };
 
-export { createMsgTable, getUserByMsg, addUserMsg };
+/* == Таблица медиагрупп == */
+
+const createMediaTable = async (): Promise<void> => {
+    const query = `
+        CREATE TABLE IF NOT EXISTS media_groups (
+            id SERIAL PRIMARY KEY,
+            media_group_id TEXT NOT NULL,
+            message_id BIGINT NOT NULL,
+            chat_id BIGINT NOT NULL,
+            file_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            caption TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    `;
+    try {
+        await pool.query(query);
+    }
+    catch (err) {
+        console.error(`[ERROR] ${err}`);
+    };
+};
+
+const addMediaGroupItem = async (
+  media_group_id: string,
+  message_id: number,
+  chat_id: number,
+  type: string,
+  file_id: string,
+  caption?: string
+): Promise<void> => {
+    const query = `
+        INSERT INTO media_groups
+        (media_group_id, message_id, chat_id, type, file_id, caption)
+        VALUES ($1, $2, $3, $4, $5, $6)
+    `;
+    try {
+        await pool.query(
+            query, [
+                media_group_id, 
+                message_id, 
+                chat_id, 
+                type, 
+                file_id, 
+                caption || null
+            ]
+        );
+    }
+    catch (err) {
+        console.error(`[ERROR] ${err}`);
+    };
+};
+
+const getMediaGroup = async (media_group_id: string): Promise<any[] | undefined> => {
+    const query = `
+        SELECT *
+        FROM media_groups
+        WHERE media_group_id = $1
+        ORDER BY id ASC
+    `;
+    try {
+        const { rows } = await pool.query(query, [media_group_id]);
+        return rows;
+    }
+    catch (err) {
+        console.error(`[ERROR] ${err}`);
+    };
+};
+
+export { createMsgTable, getUserByMsg, addUserMsg, createMediaTable, addMediaGroupItem, getMediaGroup };

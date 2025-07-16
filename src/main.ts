@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg } from "./db_client"; 
+import { getUserByMsg, addUserMsg, addMediaGroupItem, getMediaGroup } from "./db_client"; 
 import { Message } from '@telegraf/types/message';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
@@ -191,7 +191,11 @@ bot.command('id', async (ctx: Context) => {
 bot.on('message', async (ctx: Context) => {
   if (ctx.chat && ctx.message) {
     const userId = ctx.chat.id;
+
     if (ctx.chat?.type === "private") {
+      if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
+
+      }
       try {
         const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
         await addUserMsg(forward.message_id, userId);
@@ -201,8 +205,7 @@ bot.on('message', async (ctx: Context) => {
         await ctx.reply("Не удалось отправить сообщение.");
       };
       return;
-    };
-    if (
+    } else if (
       ctx.chat.id === Number(config.ADMIN_CHAT) &&
       "reply_to_message" in ctx.message &&
       ctx.message.reply_to_message !== undefined
@@ -212,6 +215,9 @@ bot.on('message', async (ctx: Context) => {
       if (!targetUserId) {
         return; // No such requested user
       };
+      if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
+
+      }
       try {
         await sendMessageTo(bot.telegram, ctx.message, targetUserId);
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
