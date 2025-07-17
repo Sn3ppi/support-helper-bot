@@ -119,7 +119,7 @@ const editMediaGroupItem = async (
     caption: string
 ): Promise<void> => {
     const query = `
-        UPDATE media_items
+        UPDATE media_groups
         SET caption = $1
         WHERE media_group_id = $2
         AND message_id = $3
