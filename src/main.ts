@@ -111,8 +111,7 @@ const showIDInfo = async (ctx: Context) => {
 const sendMessageTo = async (telegram: Telegram, source: Message.CommonMessage | Message | undefined, targetId: number) => {
   if (source) {
     if ("media_group_id" in source && source.media_group_id) {
-      const mediaGroup = await getMediaGroup(source.media_group_id);
-
+      const mediaGroup = await getMediaGroup(source.media_group_id); // Не может найти медиагруппу
       if (mediaGroup) {
         const media = mediaGroup
           .map((item): InputMediaPhoto | InputMediaVideo | InputMediaDocument | undefined => {
@@ -255,7 +254,7 @@ bot.on('message', async (ctx: Context) => {
             file_id,
             ctx.message.caption
           );
-          // return;
+          // return; 
         };
         const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
         await addUserMsg(forward.message_id, userId);
