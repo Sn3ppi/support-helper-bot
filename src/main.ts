@@ -242,20 +242,6 @@ bot.on('message', async (ctx: Context) => {
     const userId = ctx.chat.id;
     if (ctx.chat?.type === "private") {
       try {
-        if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
-          const media = parseMediaGroup(ctx.message);
-          if (!media) return;
-          const { type, file_id } = media;
-          await addMediaGroupItem(
-            ctx.message.media_group_id,
-            ctx.message.message_id,
-            ctx.message.chat.id,
-            type,
-            file_id,
-            ctx.message.caption
-          );
-          // return; 
-        };
         const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
         await addUserMsg(forward.message_id, userId);
         await ctx.reply("Сообщение отправлено.");
@@ -264,38 +250,35 @@ bot.on('message', async (ctx: Context) => {
         await ctx.reply("Не удалось отправить сообщение.");
       };
       return;
-    } else if (
-      ctx.chat.id === Number(config.ADMIN_CHAT) &&
-      "reply_to_message" in ctx.message &&
-      ctx.message.reply_to_message !== undefined
-    ) {
-      const repliedMsg = ctx.message.reply_to_message;
-      const targetUserId = await getUserByMsg(repliedMsg.message_id);
-      if (!targetUserId) {
-        return; // No such requested user
+    } else if (ctx.chat.id === Number(config.ADMIN_CHAT)) {
+      if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
+        const media = parseMediaGroup(ctx.message);
+        if (!media) return;
+        const { type, file_id } = media;
+        await addMediaGroupItem(
+          ctx.message.media_group_id,
+          ctx.message.message_id,
+          ctx.message.chat.id,
+          type,
+          file_id,
+          ctx.message.caption
+        );
       };
-      try {
-        if ("media_group_id" in ctx.message && ctx.message.media_group_id) {
-          const media = parseMediaGroup(ctx.message);
-          if (!media) return;
-          const { type, file_id } = media;
-          await addMediaGroupItem(
-            ctx.message.media_group_id,
-            ctx.message.message_id,
-            ctx.message.chat.id,
-            type,
-            file_id,
-            ctx.message.caption
-          );
-          // return;
+      if (
+        "reply_to_message" in ctx.message &&
+        ctx.message.reply_to_message !== undefined
+      ) {
+        const repliedMsg = ctx.message.reply_to_message;
+        const targetUserId = await getUserByMsg(repliedMsg.message_id);
+        if (!targetUserId) return;  // No such requested user
+        try {
+          await sendMessageTo(bot.telegram, ctx.message, targetUserId);
+          await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
+        } catch (err) {
+          console.error(err);
+          await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
         };
-        await sendMessageTo(bot.telegram, ctx.message, targetUserId);
-        await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
-      } catch (err) {
-        console.error(err);
-        await ctx.reply("Не удалось отправить сообщение.", { reply_parameters: { message_id: ctx.message.message_id } });
-      };
-      return;
-    };
+      }
+    }
   };
 });
