@@ -112,6 +112,31 @@ const addMediaGroupItem = async (
     };
 };
 
+const editMediaGroupItem = async (
+    media_group_id: string,
+    message_id: number,
+    file_id: string,
+    caption: string
+): Promise<void> => {
+    const query = `
+        UPDATE media_items
+        SET caption = $1
+        WHERE media_group_id = $2
+        AND message_id = $3
+        AND file_id = $4
+    `;
+    try {
+        await pool.query(query, [
+            caption,
+            media_group_id,
+            message_id,
+            file_id
+        ]);
+    } catch (err) {
+        console.error(`[ERROR] ${err}`);
+    };
+};
+
 const getMediaGroup = async (media_group_id: string): Promise<any[] | undefined> => {
     const query = `
         SELECT *
@@ -128,4 +153,4 @@ const getMediaGroup = async (media_group_id: string): Promise<any[] | undefined>
     };
 };
 
-export { createMsgTable, getUserByMsg, addUserMsg, createMediaTable, addMediaGroupItem, getMediaGroup };
+export { createMsgTable, getUserByMsg, addUserMsg, createMediaTable, addMediaGroupItem, getMediaGroup, editMediaGroupItem };

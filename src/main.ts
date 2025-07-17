@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf, Telegram } from 'telegraf';
 
 import config from "./config";
-import { getUserByMsg, addUserMsg, addMediaGroupItem, getMediaGroup } from "./db_client"; 
+import { getUserByMsg, addUserMsg, addMediaGroupItem, getMediaGroup, editMediaGroupItem } from "./db_client"; 
 import { Message } from '@telegraf/types/message';
 import { media_group } from '@dietime/telegraf-media-group';
 import { InputMediaDocument, InputMediaPhoto, InputMediaVideo } from 'telegraf/typings/core/types/typegram';
@@ -281,4 +281,23 @@ bot.on('message', async (ctx: Context) => {
       }
     }
   };
+});
+
+bot.on("edited_message", async (ctx: Context) => {
+  const source = ctx.editedMessage as Message.CommonMessage;
+  if (
+    "media_group_id" in source && 
+    typeof source.media_group_id === "string" && 
+    source.media_group_id
+  ) {
+    const media = parseMediaGroup(source);
+    if (!media) return;
+    const { file_id } = media;
+    await editMediaGroupItem(
+      source.media_group_id,              
+      source.message_id,                  
+      file_id,                          
+      'caption' in source && typeof source.caption === 'string' ? source.caption : ""
+    );
+  }
 });
