@@ -120,17 +120,17 @@ const editMediaGroupItem = async (
 ): Promise<void> => {
     const query = `
         UPDATE media_groups
-        SET caption = $1
-        WHERE media_group_id = $2
-        AND message_id = $3
-        AND file_id = $4
+        SET file_id = $1,
+            caption = $2
+        WHERE media_group_id = $3
+        AND message_id = $4
     `;
     try {
         await pool.query(query, [
+            file_id,
             caption,
             media_group_id,
-            message_id,
-            file_id
+            message_id
         ]);
     } catch (err) {
         console.error(`[ERROR] ${err}`);
