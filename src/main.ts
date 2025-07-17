@@ -4,7 +4,7 @@ import config from "./config";
 import { getUserByMsg, addUserMsg, addMediaGroupItem, getMediaGroup, editMediaGroupItem } from "./db_client"; 
 import { Message } from '@telegraf/types/message';
 import { media_group } from '@dietime/telegraf-media-group';
-import { InputMediaDocument, InputMediaPhoto, InputMediaVideo } from 'telegraf/typings/core/types/typegram';
+import { InlineKeyboardMarkup, InputMediaDocument, InputMediaPhoto, InputMediaVideo } from 'telegraf/typings/core/types/typegram';
 
 export const bot = new Telegraf(config.BOT_TOKEN);
 
@@ -108,7 +108,12 @@ const showIDInfo = async (ctx: Context) => {
   return text;
 }
 
-const sendMessageTo = async (telegram: Telegram, source: Message.CommonMessage | Message | undefined, targetId: number) => {
+const sendMediaGroupTo = async (
+  telegram: Telegram, 
+  source: Message.CommonMessage | Message | undefined, 
+  targetId: number,
+  kb?: InlineKeyboardMarkup
+) => {
   if (source) {
     if ("media_group_id" in source && source.media_group_id) {
       const mediaGroup = await getMediaGroup(source.media_group_id); // Не может найти медиагруппу
@@ -132,31 +137,45 @@ const sendMessageTo = async (telegram: Telegram, source: Message.CommonMessage |
             (item): item is InputMediaPhoto | InputMediaVideo | InputMediaDocument =>
               item !== undefined
           );
+        const extra: any = {};
+        if (kb) { extra.reply_markup = kb; }
         await telegram.sendMediaGroup(
           targetId,
-          media as unknown as readonly InputMediaDocument[]
+          media as unknown as readonly InputMediaDocument[],
+          extra
         );
       }
       return;
     }
+  }
+}
+
+const sendMessageTo = async (
+  telegram: Telegram, 
+  source: Message.CommonMessage | Message | undefined, 
+  targetId: number,
+  kb?: InlineKeyboardMarkup
+) => {
+  if (source) {
+    const extra = kb ? { reply_markup: kb } : undefined;
     if ('text' in source && source.text) {
-      await telegram.sendMessage(targetId, source.text);
+      await telegram.sendMessage(targetId, source.text, extra);
     } else if ("photo" in source) {
       const photo = source.photo.pop();
       if (photo)
-        await telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '' });
+        await telegram.sendPhoto(targetId, photo.file_id, { caption: source.caption || '', ...extra });
     } else if ("document" in source) {
-      await telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '' });
+      await telegram.sendDocument(targetId, source.document.file_id, { caption: source.caption || '', ...extra });
     } else if ("video" in source) {
-      await telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '' });
+      await telegram.sendVideo(targetId, source.video.file_id, { caption: source.caption || '', ...extra });
     } else if ("audio" in source) {
-      await telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '' });
+      await telegram.sendAudio(targetId, source.audio.file_id, { caption: source.caption || '', ...extra });
     } else if ("voice" in source) {
-      await telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '' });
+      await telegram.sendVoice(targetId, source.voice.file_id, { caption: source.caption || '', ...extra });
     } else if ("sticker" in source) {
-      await telegram.sendSticker(targetId, source.sticker.file_id);
+      await telegram.sendSticker(targetId, source.sticker.file_id, extra);
     } else if ("video_note" in source) {
-      await telegram.sendVideoNote(targetId, source.video_note.file_id)
+      await telegram.sendVideoNote(targetId, source.video_note.file_id, extra)
     } else {
       return; // Unhandled message type
     };
@@ -185,7 +204,9 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            await sendMessageTo(bot.telegram, ctx.message.reply_to_message, targetId);
+            ("media_group_id" in ctx.message) ?
+              await sendMediaGroupTo(bot.telegram, ctx.message.reply_to_message, targetId, await feedBackKb()) :
+              await sendMessageTo(bot.telegram, ctx.message.reply_to_message, targetId, await feedBackKb());
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
