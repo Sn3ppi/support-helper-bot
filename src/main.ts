@@ -186,7 +186,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            await sendMessageTo(bot.telegram, ctx.message, targetId);
+            await sendMessageTo(bot.telegram, ctx.message.reply_to_message, targetId);
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
           } catch (err) {
             console.error(err);
@@ -255,7 +255,7 @@ bot.on('message', async (ctx: Context) => {
             file_id,
             ctx.message.caption
           );
-          return;
+          // return;
         };
         const forward = await ctx.forwardMessage(config.ADMIN_CHAT);
         await addUserMsg(forward.message_id, userId);
@@ -288,7 +288,7 @@ bot.on('message', async (ctx: Context) => {
             file_id,
             ctx.message.caption
           );
-          return;
+          // return;
         };
         await sendMessageTo(bot.telegram, ctx.message, targetUserId);
         await ctx.reply("Сообщение отправлено.", { reply_parameters: { message_id: ctx.message.message_id } });
