@@ -141,12 +141,10 @@ const sendMediaGroupTo = async (
           targetId,
           media as unknown as readonly InputMediaDocument[],
         );
-        /*
         if (kb && sentMessages.length > 0) {
           const last = sentMessages[sentMessages.length - 1];
           await telegram.editMessageReplyMarkup(targetId, last.message_id, undefined, kb);
         }
-        */
       }
       return;
     }
@@ -207,7 +205,7 @@ bot.command('post', async (ctx) => {
            ctx.message.reply_to_message !== undefined
         ) {
           try {
-            ("media_group_id" in ctx.message) ?
+            ("media_group_id" in ctx.message.reply_to_message) ?
               await sendMediaGroupTo(bot.telegram, ctx.message.reply_to_message, targetId, await feedBackKb()) :
               await sendMessageTo(bot.telegram, ctx.message.reply_to_message, targetId, await feedBackKb());
             await ctx.reply("Сообщение отправлено в канал.", { reply_parameters: { message_id: ctx.message.message_id } });
