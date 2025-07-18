@@ -137,16 +137,16 @@ const sendMediaGroupTo = async (
             (item): item is InputMediaPhoto | InputMediaVideo | InputMediaDocument =>
               item !== undefined
           );
-        const extra: any = {};
-        if (kb) { extra.reply_markup = kb; }
         const sentMessages = await telegram.sendMediaGroup(
           targetId,
           media as unknown as readonly InputMediaDocument[],
         );
+        /*
         if (kb && sentMessages.length > 0) {
           const last = sentMessages[sentMessages.length - 1];
           await telegram.editMessageReplyMarkup(targetId, last.message_id, undefined, kb);
         }
+        */
       }
       return;
     }
