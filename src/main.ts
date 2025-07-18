@@ -143,7 +143,7 @@ const sendMediaGroupTo = async (
         );
         if (kb) {
           await bot.telegram.sendMessage(
-            targetId, " ", { reply_markup: await feedBackKb() }
+            targetId, "\u200B", { reply_markup: await feedBackKb() }
           )
         };
       }
