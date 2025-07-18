@@ -141,9 +141,9 @@ const sendMediaGroupTo = async (
           targetId,
           media as unknown as readonly InputMediaDocument[],
         );
-        if (kb) {
+        if (kb) { 
           await bot.telegram.sendMessage(
-            targetId, "\u200B", { reply_markup: await feedBackKb() }
+            targetId, "\u3164", { reply_markup: await feedBackKb() }
           )
         };
       }
@@ -196,7 +196,7 @@ bot.command("start", async (ctx: Context) => {
   };
 });
 
-bot.command('post', async (ctx) => {
+bot.command('post', async (ctx: Context) => {
   const targetId = Number(config.ADMIN_CHANNEL);
   if (ctx.chat && ctx.message) {
     if (ctx.chat.id === Number(config.ADMIN_CHAT)) { // Команда доступна только администрации
